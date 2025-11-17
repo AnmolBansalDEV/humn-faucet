@@ -1,5 +1,5 @@
 {
-  "name": "my-turborepo",
+  "name": "humn-faucet",
   "private": true,
   "scripts": {
     "build": "turbo run build",

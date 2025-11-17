@@ -1,0 +1,25 @@
+{
+        admin off
+}
+
+test-humn-faucet.waap.tools {
+    # Handle API routes first (more specific)
+    handle /api/* {
+        reverse_proxy localhost:3030
+    }
+
+	handle /signer/* {
+		reverse_proxy localhost:8080
+	}
+
+    # Handle all other routes to frontend
+    handle {
+        reverse_proxy localhost:3000
+    }
+
+    # Optional: Add logging
+    log {
+        output file /var/log/caddy/access.log
+        format console
+    }
+}

@@ -1,0 +1,107 @@
+services:
+  # -----------------------------------
+  # PostgreSQL Database Service
+  # -----------------------------------
+  db:
+    image: postgres:16-alpine
+    container_name: faucet_db
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    networks:
+      - faucet-net
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # -----------------------------------
+  # Rust Backend Service
+  # -----------------------------------
+  backend:
+    image: anmol02/humn-faucet-backend:latest
+    container_name: faucet_backend
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "3030:3030"
+    networks:
+      - faucet-net
+    environment:
+      DATABASE_URL: "postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}"
+      FAUCET_PRIVATE_KEY: ${FAUCET_PRIVATE_KEY}
+      RPC_URL: ${RPC_URL}
+      TOKEN_CONTRACT_ADDRESS: ${TOKEN_CONTRACT_ADDRESS}
+    restart: always
+
+  # -----------------------------------
+  # Next.js Frontend Service
+  # -----------------------------------
+  frontend:
+    image: anmol02/humn-faucet-frontend:latest
+    container_name: faucet_frontend
+    ports:
+      - "3000:3000"
+    networks:
+      - faucet-net
+    environment:
+      NEXT_PUBLIC_API_BASE_URL: ${API_BASE_URL}
+      NEXT_PUBLIC_SIGNER_URL: ${SIGNER_URL}
+    depends_on:
+      - backend
+    restart: always
+
+  # -----------------------------------
+  # NEW: Mishti Signer Service
+  # -----------------------------------
+  signer:
+    image: mishtinetwork/signer
+    container_name: signer
+    ports:
+      - "${SIGNER_PORT}:${SIGNER_PORT}"
+    networks:
+      - faucet-net
+    environment:
+      SIGNER_ENV: ${SIGNER_ENV}
+      MISHTI_RPC_URL: ${MISHTI_RPC_URL}
+      MISHTI_SIGNER_PRIVATE_KEY: ${MISHTI_SIGNER_PRIVATE_KEY}
+      SIGNER_PORT: ${SIGNER_PORT}
+      ALLOWED_METHODS: ${ALLOWED_METHODS}
+      RATE_LIMIT_ENABLED: ${RATE_LIMIT_ENABLED}
+      RATE_LIMIT_NUM_REQUESTS: ${RATE_LIMIT_NUM_REQUESTS}
+      RATE_LIMIT_TIME_INTERVAL: ${RATE_LIMIT_TIME_INTERVAL}
+    restart: unless-stopped
+
+  caddy:
+    image: caddy:latest
+    container_name: caddy
+    ports:
+      - "80:80"
+      - "443:443"
+    networks:
+      - faucet-net
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - backend
+      - frontend
+      - signer
+
+networks:
+  faucet-net:
+    driver: bridge
+
+volumes:
+  postgres_data:
+  caddy_data:
+  caddy_config:

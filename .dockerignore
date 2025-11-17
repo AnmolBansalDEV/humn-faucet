@@ -1,0 +1,30 @@
+# Rust build artifacts
+target/
+
+# Git files
+.git
+.gitignore
+
+# Environment files (NEVER copy secrets into an image)
+.env
+.env.*
+
+# IDE configuration
+.vscode/
+.idea/
+*.iml
+
+# Local database file (if using SQLite for dev)
+*.db
+
+# Node local dependencies
+node_modules/
+
+# Next.js build output
+.next/
+
+# Debug logs
+npm-debug.log*
+yarn-error.log
+
+.turbo/
